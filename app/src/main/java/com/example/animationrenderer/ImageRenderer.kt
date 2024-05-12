@@ -18,17 +18,19 @@ class ImageRenderer(private val context: Context, private val imageBitmap: Bitma
 
     private var textureId: Int = 0
     private var program: Int = 0
-//    private var uMVPMatrixLocation: Int = 0
-//    private val mvpMatrix = FloatArray(16)
-//    private val projectionMatrix = FloatArray(16)
-//    private val viewMatrix = FloatArray(16)
+
+    //Matrix
+    private val mvpMatrix = FloatArray(16)
+    private val projectionMatrix = FloatArray(16)
+    private val viewMatrix = FloatArray(16)
+    private val rotationMatrix = FloatArray(16)
 
 
-    //Handles
+    //Handle
     private var aPositionHandle = -1
     private var uTextureHandle = -1
     private var aTextureCoordinateHandle = -1
-    private var alphaHandle = -1
+    private var uMvpMatrixHandle = -1
 
 
     private val vertexShaderCode = """
@@ -37,7 +39,7 @@ class ImageRenderer(private val context: Context, private val imageBitmap: Bitma
             varying vec2 v_TexCoordinate;
             uniform mat4 u_MVPMatrix;
             void main() {
-                gl_Position = a_Position;
+                gl_Position = u_MVPMatrix * a_Position;
                 v_TexCoordinate = a_TexCoordinate;
             }
         """.trimIndent()
@@ -46,10 +48,8 @@ class ImageRenderer(private val context: Context, private val imageBitmap: Bitma
             precision mediump float;
             varying vec2 v_TexCoordinate;
             uniform sampler2D u_Texture;
-            uniform float alpha;
             void main() {
-                vec4 color = texture2D(u_Texture, v_TexCoordinate);
-                gl_FragColor = color * alpha;
+                gl_FragColor = texture2D(u_Texture, v_TexCoordinate);;
             }
         """.trimIndent()
 
@@ -60,7 +60,12 @@ class ImageRenderer(private val context: Context, private val imageBitmap: Bitma
         1.0f, -1.0f // Bottom right
     )
 
-    private val textureData = floatArrayOf(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f)
+    private val textureData = floatArrayOf(
+        0.0f, 0.0f,  // Top left (flipped)
+        0.0f, 1.0f,  // Bottom left
+        1.0f, 0.0f,  // Top right (flipped)
+        1.0f, 1.0f   // Bottom right
+    )
 
     private val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(8 * 4).run {
         order(ByteOrder.nativeOrder())
@@ -106,55 +111,68 @@ class ImageRenderer(private val context: Context, private val imageBitmap: Bitma
         aPositionHandle = GLES20.glGetAttribLocation(program, "a_Position")
         uTextureHandle = GLES20.glGetUniformLocation(program, "u_Texture")
         aTextureCoordinateHandle = GLES20.glGetAttribLocation(program, "a_TexCoordinate")
-//        uMVPMatrixLocation = GLES20.glGetUniformLocation(program, "u_MVPMatrix")
-        alphaHandle = GLES20.glGetUniformLocation(program, "alpha")
+        uMvpMatrixHandle = GLES20.glGetUniformLocation(program, "u_MVPMatrix")
 
-
-        GLES20.glVertexAttribPointer(aPositionHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer)
-        GLES20.glEnableVertexAttribArray(aPositionHandle)
-
-        GLES20.glVertexAttribPointer(aTextureCoordinateHandle, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer)
-        GLES20.glEnableVertexAttribArray(aTextureCoordinateHandle)
         GLES20.glEnable(GLES20.GL_BLEND)
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
-        executor.scheduleAtFixedRate(::mRequestRender, 0, 33, TimeUnit.MILLISECONDS)
+        Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, 3f, 0f, 0f, 0f, 0f, 1.0f, 0.0f)
+//        executor.scheduleAtFixedRate(::mRequestRender, 0, 33, TimeUnit.MILLISECONDS)
+        mRequestRender()
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         "surface changed called".rlog()
         GLES20.glViewport(0, 0, width, height)
-//        val ratio = width.toFloat() / height.toFloat()
-//        Matrix.orthoM(projectionMatrix, 0, -ratio, ratio, -1f, 1f, 3f, 7f)
-//        Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, -5f, 0f, 0f, 0f, 0f, 1f, 0f)
-//        Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
+        val aspectRatio = width.toFloat() / height.toFloat()
+
+        val bitmapAspectRatio = imageBitmap.width.toFloat() / imageBitmap.height.toFloat()
+        val projectionWidth: Float
+        val projectionHeight: Float
+        if (aspectRatio > bitmapAspectRatio) {
+            // Width is larger, adjust height
+            projectionWidth = aspectRatio / bitmapAspectRatio
+            projectionHeight = 1.0f
+        } else {
+            // Height is larger or equal, adjust width
+            projectionWidth = 1.0f
+            projectionHeight = bitmapAspectRatio / aspectRatio
+        }
+        Matrix.orthoM(projectionMatrix, 0, -projectionWidth, projectionWidth, -projectionHeight, projectionHeight, 3f, 7f)
     }
     fun mRequestRender(){
         glView.requestRender()
     }
 
-    var alpha = 1.0f
-    var isIncreasing = false
+    var rotate = 90f
 
     override fun onDrawFrame(gl: GL10?) {
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
 
         GLES20.glUseProgram(program)
-//        GLES20.glUniformMatrix4fv(uMVPMatrixLocation, 1, false, mvpMatrix, 0)
-        GLES20.glUniform1f(alphaHandle, alpha)
-        if (alpha <= 0.5f){
-            alpha += 0.02f
-            isIncreasing = true
-        } else if (alpha >= 0.9f){
-            alpha -= 0.02f
-            isIncreasing = false
-        } else {
-            if (isIncreasing){
-                alpha += 0.02f
-            } else {
-                alpha -= 0.02f
-            }
-        }
+//        rotate++
+        val temp = FloatArray(16)
+        Matrix.setIdentityM(rotationMatrix, 0);
+        Matrix.setRotateM(rotationMatrix, 0, rotate, 0f, 0.0f, 1.0f)
+////        rotate++
+        var a = ""
+        projectionMatrix.forEach { a += "$it , " }
+        "projection matrix...${a}".rlog()
+        var b = ""
+        viewMatrix.forEach { b += "$it , " }
+        "view matrix...${b}".rlog()
+        Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
+        var c = ""
+        mvpMatrix.forEach { c += "$it , " }
+        "model view matrix...${c}".rlog()
+        Matrix.multiplyMM(mvpMatrix, 0, mvpMatrix, 0, rotationMatrix, 0)
+        GLES20.glUniformMatrix4fv(uMvpMatrixHandle, 1, false, mvpMatrix, 0)
+
+        GLES20.glVertexAttribPointer(aPositionHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer)
+        GLES20.glEnableVertexAttribArray(aPositionHandle)
+
+        GLES20.glVertexAttribPointer(aTextureCoordinateHandle, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer)
+        GLES20.glEnableVertexAttribArray(aTextureCoordinateHandle)
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
