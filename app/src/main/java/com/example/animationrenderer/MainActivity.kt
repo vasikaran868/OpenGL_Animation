@@ -17,21 +17,21 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         glView = findViewById<GLSurfaceView>(R.id.glView)
 //        val btn = findViewById<AppCompatButton>(R.id.animateBtn)
-        val renderer =  ImageRenderer(this, BitmapFactory.decodeResource(this.resources, R.drawable.peacock) ,glView, executor)
-//        val renderer =  LessonOneRenderer()
+//        val renderer =  ImageRenderer(this, BitmapFactory.decodeResource(this.resources, R.drawable.high_pic) ,glView, executor)
+        val renderer =  MyGLRenderer(BitmapFactory.decodeResource(this.resources, R.drawable.peacock), glView)
         glView.setEGLContextClientVersion(2)
         glView.setRenderer(renderer)
-        glView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+//        glView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
     }
 
     override fun onResume() {
         super.onResume()
-        glView.onResume()
+//        glView.onResume()
     }
 
     override fun onPause() {
         super.onPause()
-        glView.onPause()
+//        glView.onPause()
     }
 
     override fun onDestroy() {

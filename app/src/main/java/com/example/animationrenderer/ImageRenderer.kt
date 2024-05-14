@@ -24,6 +24,7 @@ class ImageRenderer(private val context: Context, private val imageBitmap: Bitma
     private val projectionMatrix = FloatArray(16)
     private val viewMatrix = FloatArray(16)
     private val rotationMatrix = FloatArray(16)
+    private val scratch = floatArrayOf(-0.026178528f , 0.9998477f , 0.0f , 0.0f , -1.4997716f , -0.017452352f , -0.0f , 0.0f , 0.0f , 0.0f , -0.5f , 0.0f , 0.0f , 0.0f , -1.0f , 1.0f)
 
 
     //Handle
@@ -143,7 +144,7 @@ class ImageRenderer(private val context: Context, private val imageBitmap: Bitma
         glView.requestRender()
     }
 
-    var rotate = 90f
+    var rotate = 0f
 
     override fun onDrawFrame(gl: GL10?) {
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
@@ -156,16 +157,12 @@ class ImageRenderer(private val context: Context, private val imageBitmap: Bitma
         Matrix.setRotateM(rotationMatrix, 0, rotate, 0f, 0.0f, 1.0f)
 ////        rotate++
         var a = ""
-        projectionMatrix.forEach { a += "$it , " }
-        "projection matrix...${a}".rlog()
-        var b = ""
-        viewMatrix.forEach { b += "$it , " }
-        "view matrix...${b}".rlog()
+        projectionMatrix.printMatrix("projection")
+        viewMatrix.printMatrix("view")
         Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
-        var c = ""
-        mvpMatrix.forEach { c += "$it , " }
-        "model view matrix...${c}".rlog()
-        Matrix.multiplyMM(mvpMatrix, 0, mvpMatrix, 0, rotationMatrix, 0)
+        mvpMatrix.printMatrix("model view")
+//        Matrix.multiplyMM(mvpMatrix, 0, mvpMatrix, 0, rotationMatrix, 0)
+//        Matrix.multiplyMM(mvpMatrix, 0, scratch, 0, mvpMatrix, 0)
         GLES20.glUniformMatrix4fv(uMvpMatrixHandle, 1, false, mvpMatrix, 0)
 
         GLES20.glVertexAttribPointer(aPositionHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer)
