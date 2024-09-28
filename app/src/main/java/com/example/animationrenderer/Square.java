@@ -68,10 +68,10 @@ public class Square {
     // number of coordinates per vertex in this array
     static final int COORDS_PER_VERTEX = 3;
     static float squareCoords[] = {
-            -0.54f,  0.8f, 0.0f,   // top left
-            -0.54f, -0.8f, 0.0f,   // bottom left
-            0.54f, -0.8f, 0.0f,   // bottom right
-            0.54f,  0.8f, 0.0f }; // top right
+            -0.68f,  1f, 0.0f,   // top left
+            -0.68f, -1f, 0.0f,   // bottom left
+            0.68f, -1f, 0.0f,   // bottom right
+            0.68f,  1f, 0.0f }; // top right
 
     static float textureCoords[] = {
             0.0f, 0.0f,  // Top left (flipped)

@@ -161,6 +161,10 @@ class ImageRenderer(private val context: Context, private val imageBitmap: Bitma
         viewMatrix.printMatrix("view")
         Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
         mvpMatrix.printMatrix("model view")
+        Matrix.scaleM(temp, 0, 1f, 0f, 0f)
+
+        Matrix.multiplyMM(mvpMatrix, 0, temp, 0, mvpMatrix, 0)
+        mvpMatrix.printMatrix("scaled mvp")
 //        Matrix.multiplyMM(mvpMatrix, 0, mvpMatrix, 0, rotationMatrix, 0)
 //        Matrix.multiplyMM(mvpMatrix, 0, scratch, 0, mvpMatrix, 0)
         GLES20.glUniformMatrix4fv(uMvpMatrixHandle, 1, false, mvpMatrix, 0)
